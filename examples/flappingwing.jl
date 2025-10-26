@@ -138,7 +138,7 @@ function flappingwing(; verbose=true, save_fdom=false, num_strikes=12, nsteps=10
         readline()
       end
       if save_path!=nothing
-        this_num = (i<10?"000":i<100?"00":i<1000?"0":"")*"$i"
+        this_num = (i<10 ? "000" : i<100 ? "00" : i<1000 ? "0" : "")*"$i"
         savefig(save_path*run_name*"_flapvel_"*this_num*".png")
       end
     end
@@ -418,7 +418,7 @@ function generate_eagle(; gamma2=4*pi/180, gamma3=15*pi/180, n=2, fdom_n=2,
 
     # Saves fluid domain
     if save_fdom && generate_fdom
-      vlm.PP.save(fdom, run_name; path=save_path, num=(num==nothing?-1:num))
+      vlm.PP.save(fdom, run_name; path=save_path, num=(num==nothing ? -1 : num))
     end
   end
 

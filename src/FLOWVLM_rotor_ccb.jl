@@ -141,8 +141,8 @@ function FLOWVLM2OCCBlade(self,#::Rotor,
     end
 
     # 3D corrections
-    this_polar = ap.correction3D(this_polar, r_over_R, c_over_r, tsr)
-
+    # this_polar = ap.correction3D(this_polar, r_over_R, c_over_r, tsr)
+    # this_polar = this_polar
     # 360 extrapolation
     if AR_to_360extrap
         # use a linear interpolation instead of Splines; then don't expose this flag in FLOWUnsteady
@@ -171,7 +171,7 @@ function FLOWVLM2OCCBlade(self,#::Rotor,
 
   rotor = OCCBRotor(self._r, self._chord,
                     (-1)^(turbine_flag)*(-1)^self.CW*self._theta*pi/180, af,
-                    Rhub, Rtip, self.B, precone)
+                    Rhub, Rtip, self.B, precone) #validated by YHR
 
   return rotor
 end
@@ -252,9 +252,9 @@ end
 "Returns the CCBlade's transformation matrix relative to the blade's c.s."
 function _ccbladeOaxis(blade::Wing, CW::Bool)
   # CCBlade c.s. matrix
-  ccb_Oaxis = [ 0 0 (-1)^CW;  # CC x-dir = Blade z-dir
+  ccb_Oaxis = [ 0 0 (-1)^!CW;  # CC x-dir = Blade z-dir
                 1.0 0 0;      # CC y-dir = Blade x-dir
-                0 (-1)^CW 0]  # CC z-dir = Blade y-dir
+                0 (-1)^!CW 0]  # CC z-dir = Blade y-dir
 
   return ccb_Oaxis
 end

@@ -278,8 +278,10 @@ function solvefromV(self::Rotor, Vind, args...;
     end
   end
 
+  # println("Unstable mode on")
   return solvefromCCBlade(self, args...; _lookuptable=true, _Vinds=Vind,
                                                                     optargs...)
+  
 end
 
 
@@ -579,7 +581,7 @@ function save_loft(self::Rotor{TF_design, TF_trajectory}, filename::String; addt
   # Iterates over each airfoil creating cross sections
   for (i,polar) in enumerate(self._polars)
 
-    theta = pi/180*self._theta[i]   # Angle of attack
+    theta = pi/180*self._theta[i]*(-1)^self.turbine_flag   # Angle of attack
 
     # Actual airfoil contour
     x, y = self._chord[i]*polar.x, self._chord[i]*polar.y*(-1)^self.turbine_flag
@@ -612,10 +614,10 @@ function save_loft(self::Rotor{TF_design, TF_trajectory}, filename::String; addt
       ind = root_flg ? 1 : size(self.r,1)
       alt_polar = root_flg ? self._polarroot : self._polartip
 
-      theta = (-1)^(self.CW)*pi/180*self.theta[ind]   # Angle of attack
+      theta = (-1)^(self.CW) * pi/180 * self.theta[ind] * (-1)^self.turbine_flag   # Angle of attack
 
       # Actual airfoil contour
-      x, y = self.chord[ind]*alt_polar.x, self.chord[ind]*alt_polar.y
+      x, y = self.chord[ind]*alt_polar.x, self.chord[ind]*alt_polar.y*(-1)^self.turbine_flag
       # Reformats x,y into point
       points = [ [x[i], y[i], 0.0] for i in 1:size(x)[1] ]
       # Rotates the contour in the right angle of attack
@@ -1249,6 +1251,7 @@ function calc_distributedloads(self::Rotor{TF}, Vinf, RPM, rho::FWrap;
     inflow_x = [V[1] for V in inflow]
     inflow_y = [V[2] for V in inflow]
     inflow_x = (-1)^(!turbine_flag)*inflow_x # The negative is needed to counteract the
+    # println("inflowx = $(inflow_x)")
     occbinflow = OCCBInflow(inflow_x, inflow_y, rho) # propeller swapping sign in CCBlade
 
     # Generates old-CCBlade Rotor object
@@ -1518,7 +1521,7 @@ function calc_aerodynamicforces(self::Rotor{TF_design, TF_trajectory}, rho::FWra
 
     # Calculates circulation
     if overwritegammas!=nothing
-      gamma = (-1)^(self.CW) * overwritegammas[blade_i]
+      gamma = (-1)^self.turbine_flag*(-1)^(self.CW) * overwritegammas[blade_i]
     else
       bladeaxis = get_blade(self, blade_i).Oaxis[2, :]    # Blade axis
       Lsgn = [sign(dot(ru, bladeaxis)) for ru in runit]   # Sign of lift
@@ -1527,7 +1530,7 @@ function calc_aerodynamicforces(self::Rotor{TF_design, TF_trajectory}, rho::FWra
 
     # Calculates dragging line dipole strength (see Caprace's thesis, 2020)
     if overwritemus!=nothing
-      mu = (-1)^(self.CW) * overwritemus[blade_i]
+      mu = (-1)^self.turbine_flag*(-1)^(self.CW) * overwritemus[blade_i]
     else
       mu = (-1)^(self.CW) .* norm.(D)./(rho*Vmag) ./ self._chord
     end
@@ -1652,6 +1655,17 @@ function calc_thrust_torque_coeffs(self::Rotor, rho::Real, Vinf::Real, turbine_f
     return thrust/(q*A), torque/(q*self.rotorR*A)
   end
 end
+
+function calc_thrust_torque_power_coeffs(self::Rotor, rho::Real, Vinf::Real, turbine_flag::Bool)
+  thrust, torque = calc_thrust_torque(self)
+  q = 0.5*rho*Vinf^2
+  A = pi*self.rotorR^2
+  CT = thrust/(q*A)
+  CQ = torque/(q*self.rotorR*A)
+  CP = CQ * self.rotorR * self.RPM * pi / 30 / Vinf
+  return CT, CQ, CP
+end
+
 
 
 
@@ -1865,7 +1879,7 @@ function _verif_discr(self, blade, elem_r, elem_chord, elem_theta,
   end
 
   # Plots
-  fig = figure("flowvlm-discr", figsize=[7*2,5*2]*figsize_factor)
+  fig = figure("flowvlm-discr", figsize=[14*2,10*2]*figsize_factor)
   axs = fig.subplots(2, 2)
 
   for (i,(lbl, cr, cchord, ctheta, cLE_x, cLE_z)) in enumerate([
@@ -1987,6 +2001,8 @@ function _calc_airfoils(self::Rotor, n::IWrap, r::FWrap,
     blended_polar = ap._pyPolar2Polar(blended_pypolar; x=blended_x, y=blended_y)
 
     push!(self._polars, blended_polar) # Stores CP airfoils in self._polars
+
+    # println("Called PyCall")
   end
 
   # Stores root and tip airfoils
@@ -2109,14 +2125,18 @@ function _calc_distributedloads_lookuptable(ccbrotor::OCCBRotor{TFr,TFC,TFt,Taf,
     aux1 = 0.5*ccbinflow.rho*(Vx*Vx+Vy*Vy)*ccbrotor.chord[i]
 
     # Effective angle of attack (rad)
-    thetaV = atan(Vx, Vy)
+    # thetaV = -swapsign*atan(Vx, Vy)
+    thetaV = swapsign*atan(Vx, Vy)
     thetaeff = thetaV - twist
 
     thetaeffdeg[i] = thetaeff*180/pi
-    # println("angles = $([twist, thetaeff]*180/pi)\tVx,Vy=$([Vx, Vy])")
+    # println("node $i , alpha = $thetaeffdeg[i]")
+    # println("node $i  angles = $([twist, thetaeff]*180/pi)\tVx,Vy=$([Vx, Vy]) \n")
 
     # airfoil cl/cd
     cl[i], cd[i] = occb_airfoil(ccbrotor.af[i], thetaeff)
+
+    # println("cl = $(cl[i]) \t cd = $(cd[i]) \n")
 
 
     # Tip and hub correction factor
@@ -2143,6 +2163,7 @@ function _calc_distributedloads_lookuptable(ccbrotor::OCCBRotor{TFr,TFC,TFt,Taf,
     cthtV = cos(thetaV)
     cn[i] = cl[i]*cthtV + cd[i]*sthtV
     ct[i] = swapsign*(cl[i]*sthtV - cd[i]*cthtV)
+    # println("cn = $(cn[i]) \t ct = $(ct[i]) \n")
 
     # Normal and tangential forces per unit length
     Np[i] = cn[i]*aux1
