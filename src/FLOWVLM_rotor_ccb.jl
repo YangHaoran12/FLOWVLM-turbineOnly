@@ -252,9 +252,9 @@ end
 "Returns the CCBlade's transformation matrix relative to the blade's c.s."
 function _ccbladeOaxis(blade::Wing, CW::Bool)
   # CCBlade c.s. matrix
-  ccb_Oaxis = [ 0 0 (-1)^!CW;  # CC x-dir = Blade z-dir
+  ccb_Oaxis = [ 0 0 (-1)^CW;  # CC x-dir = Blade z-dir
                 1.0 0 0;      # CC y-dir = Blade x-dir
-                0 (-1)^!CW 0]  # CC z-dir = Blade y-dir
+                0 (-1)^CW 0]  # CC z-dir = Blade y-dir
 
   return ccb_Oaxis
 end

@@ -424,7 +424,7 @@ function _calculateHSs(self::Wing; t::FWrap=0.0, extraVinf=nothing, extraVinfArg
     infDA = self.Vinf(Ap,t)
     infDB = self.Vinf(Bp,t)
     # Extra freestream
-    if extraVinf!=nothing
+    if extraVinf!==nothing
       this_extraVinf = extraVinf(i, t; extraVinfArgs..., wing=self)
       infDA += this_extraVinf
       infDB += this_extraVinf

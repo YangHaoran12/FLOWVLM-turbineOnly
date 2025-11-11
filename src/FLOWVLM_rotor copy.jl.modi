@@ -49,12 +49,6 @@ hence the need of explicitely declaring LE_z.
 <!-- NOTE TO SELF: r is the y-direction on a wing, hence, remember to build the
                blade from root in the direction of positive y. -->
 """
-
-# mutable struct DistributedForce{TF_design<:FWrap,TF_trajectory<:FWrap}
-#   Tp::Vector{TF_design}
-#   Np::Vector{TF_design}
-
-
 mutable struct Rotor{TF_design<:FWrap,TF_trajectory<:FWrap} <: AbstractWing{TF_design,TF_trajectory}
 
   # Initialization variables (USER INPUT)
@@ -587,7 +581,7 @@ function save_loft(self::Rotor{TF_design, TF_trajectory}, filename::String; addt
   # Iterates over each airfoil creating cross sections
   for (i,polar) in enumerate(self._polars)
 
-    theta = pi/180*self._theta[i]*(-1)^!self.turbine_flag   # Angle of attack
+    theta = pi/180*self._theta[i]*(-1)^self.turbine_flag   # Angle of attack
 
     # Actual airfoil contour
     x, y = self._chord[i]*polar.x, self._chord[i]*polar.y*(-1)^self.turbine_flag
@@ -620,7 +614,7 @@ function save_loft(self::Rotor{TF_design, TF_trajectory}, filename::String; addt
       ind = root_flg ? 1 : size(self.r,1)
       alt_polar = root_flg ? self._polarroot : self._polartip
 
-      theta = (-1)^(self.CW) * pi/180 * self.theta[ind] * (-1)^!self.turbine_flag   # Angle of attack
+      theta = (-1)^(self.CW) * pi/180 * self.theta[ind] * (-1)^self.turbine_flag   # Angle of attack
 
       # Actual airfoil contour
       x, y = self.chord[ind]*alt_polar.x, self.chord[ind]*alt_polar.y*(-1)^self.turbine_flag
@@ -1741,7 +1735,7 @@ function _generate_blade(self::Rotor{TF_design, TF_trajectory}, n::IWrap; r::FWr
   _spl_LE_z = Dierckx.Spline1D(self.r, self.LE_z; k=spline_k,s=spline_s)
   spl_chord(x) = Dierckx.evaluate(_spl_chord, x)
   spl_theta(x) = (-1)^(self.CW)*Dierckx.evaluate(_spl_theta, x)
-  spl_theta2(x) = (-1)^(!self.turbine_flag)*spl_theta(x)
+  spl_theta2(x) = (-1)^(self.turbine_flag)*spl_theta(x)
   spl_LE_x(x) =(-1)*Dierckx.evaluate(_spl_LE_x, x)
   spl_LE_z(x) = (-1)^(self.CW)*Dierckx.evaluate(_spl_LE_z, x)
 
@@ -1815,13 +1809,13 @@ function _generate_blade(self::Rotor{TF_design, TF_trajectory}, n::IWrap; r::FWr
         if i<=floor(n*_central)
           _l = l*_central
           _n = floor(n*_central)
-          _r = 1/r
+          _r = r
           _i = i
         # Right of the center
         else
           _l = l*(1-_central)
           _n = n-floor(n*_central)
-          _r = r
+          _r = 1/r
           _i = i-floor(n*_central)
         end
         p = _l/( (_n*(_n-1)/2)*(_r+1)/(_r-1) )
@@ -2146,7 +2140,7 @@ function _calc_distributedloads_lookuptable(ccbrotor::OCCBRotor{TFr,TFC,TFt,Taf,
     # airfoil cl/cd
     cl[i], cd[i] = occb_airfoil(ccbrotor.af[i], thetaeff)
 
-    # println("cl = $(cl[i]) \t cd = $(cd[i]) \n")
+    println("cl = $(cl[i]) \t cd = $(cd[i]) \n")
 
 
     # Tip and hub correction factor
@@ -2173,7 +2167,7 @@ function _calc_distributedloads_lookuptable(ccbrotor::OCCBRotor{TFr,TFC,TFt,Taf,
     cthtV = cos(thetaV)
     cn[i] = cl[i]*cthtV + cd[i]*sthtV
     ct[i] = swapsign*(cl[i]*sthtV - cd[i]*cthtV)
-    # println("cn = $(cn[i]) \t ct = $(ct[i]) \n")
+    println("cn = $(cn[i]) \t ct = $(ct[i]) \n")
 
     # Normal and tangential forces per unit length
     Np[i] = cn[i]*aux1
